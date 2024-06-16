@@ -10,10 +10,10 @@ class Enemy
 {
 public:
     Enemy(int x, int y, LPCWSTR imagePath);
-    ~Enemy();
-    void Draw(HDC hdc);
-    void Move();
-    void Attack(std::vector<Bullet*>& bullets);
+    virtual ~Enemy();
+    virtual void Draw(HDC hdc);
+    virtual void Move(); // virtual 키워드 추가
+    virtual void Attack(std::vector<Bullet*>& bullets); // virtual 키워드 추가
     bool IsDestroyed() const { return destroyed; }
     void Destroy() { destroyed = true; }
     void TakeDamage() { health--; if (health <= 0) Destroy(); }
@@ -23,7 +23,7 @@ public:
     int GetWidth() const { return image->GetWidth(); }
     int GetHeight() const { return image->GetHeight(); }
 
-private:
+protected:
     int x, y;
     int health;
     bool destroyed;

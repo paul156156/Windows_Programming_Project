@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "Fighter.h"
 #include "Enemy.h"
+#include "AdvancedEnemy.h"
 #include "Bullet.h"
 
 #pragma comment(lib, "gdiplus.lib")
@@ -28,6 +29,9 @@ std::vector<Bullet*> bullets; // 총알들을 저장할 벡터
 std::vector<Enemy*> enemies; // 적들을 저장할 벡터
 Image* lifeImage = nullptr; // 생명 수 이미지
 int score = 0; // 점수 변수
+int specialAttackUses = 0; // 사용 가능한 특수 공격 횟수
+int usedSpecialAttackCount = 0; // 사용된 특수 공격 횟수
+bool gameStarted = false;
 
 Image* LoadPNG(LPCWSTR filePath)
 {
@@ -72,6 +76,19 @@ void FireBullet()
     int x = playerFighter->GetX() + playerFighter->GetWidth() / 2 - 10;
     int y = playerFighter->GetY() - 10;
 
+    // Shift 키가 눌렸고 사용 가능한 특수 공격 횟수가 있는지 확인
+    if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && specialAttackUses > 0)
+    {
+        // 폭을 꽉 채운 3줄의 총알 발사
+        for (int i = 0; i < winWidth - 200; i += 50) // 각 줄의 간격을 50으로 설정
+        {
+            bullets.push_back(new Bullet(i, y + 20, -1, L"resource\\image\\special_bullet.png"));
+            bullets.push_back(new Bullet(i, y - 20, -1, L"resource\\image\\special_bullet.png"));
+            bullets.push_back(new Bullet(i, y - 60, -1, L"resource\\image\\special_bullet.png"));
+        }
+        specialAttackUses--;
+        usedSpecialAttackCount++;
+    }
     // 점수가 1000점 이상일 때 총알을 두 발 발사
     if (score >= 1000)
     {
@@ -87,6 +104,10 @@ void FireBullet()
 void CreateEnemy()
 {
     int x = rand() % (winWidth - 250); // 적의 x 위치를 랜덤하게 설정
+    if (score >= 1000)
+    {
+        enemies.push_back(new AdvancedEnemy(x, 0, L"resource\\image\\advanced_enemy.png"));
+    }
     enemies.push_back(new Enemy(x, 0, L"resource\\image\\enemy.png"));
 }
 
@@ -287,6 +308,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
                 return false;
                 }), bullets.end());
 
+            // 점수에 따라 특수 공격 사용 횟수 증가
+            if (score / 1000 > specialAttackUses + usedSpecialAttackCount)
+            {
+                specialAttackUses = score / 1000 - usedSpecialAttackCount;
+            }
+
             InvalidateRect(hWnd, NULL, FALSE);
         }
         else if (wParam == 2) // 적 생성 타이머
@@ -315,7 +342,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             graphics.DrawImage(pBackgroundImage, 0, bgY, imgWidth, imgHeight);
         }
 
-        // 전투기 그리기
+        // 플레이어 전투기 그리기
         if (playerFighter)
         {
             playerFighter->Draw(hMemDC);
@@ -344,13 +371,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         SelectObject(hMemDC, hOldFont);
         DeleteObject(hFont);
 
+        // 특수 공격 사용 횟수 표시
+        wchar_t specialAttackText[50];
+        swprintf_s(specialAttackText, L"Special Bullet: %d", specialAttackUses);
+        TextOut(hMemDC, 520, 80, specialAttackText, wcslen(specialAttackText)); // 특수 공격 사용 횟수를 오른쪽에 표시
+
+        SelectObject(hMemDC, hOldFont);
+        DeleteObject(hFont);
+
         // 생명 수 표시
         if (playerFighter)
         {
             for (int i = 0; i < playerFighter->GetLives(); ++i)
             {
                 Graphics graphics(hMemDC);
-                graphics.DrawImage(lifeImage, 520 + i * 40, 60, lifeImage->GetWidth(), lifeImage->GetHeight());
+                graphics.DrawImage(lifeImage, 520 + i * 40, 100, lifeImage->GetWidth(), lifeImage->GetHeight());
             }
         }
 
@@ -377,7 +412,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         delete pBackgroundImage;
         delete playerFighter;
-        delete lifeImage; // 생명 수 이미지 삭제
+        delete lifeImage;
         PostQuitMessage(0);
         break;
 
