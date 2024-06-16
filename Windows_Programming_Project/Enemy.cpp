@@ -41,6 +41,12 @@ void Enemy::Move()
 
     // 좌우로 지그재그 이동
     x += 20 * sin(moveTimer * 3.14 / 180); // 주기를 조정하여 좌우 움직임 변경
+
+    // 적의 이동을 화면 내로 제한 (적의 크기에 맞게 조정)
+    if (x < 0) x = 0;
+    if (x + image->GetWidth() > 500) x = 500 - image->GetWidth(); // 화면 너비에 맞게 조정
+    if (y < 0) y = 0;
+    if (y + image->GetHeight() > 400) y = 400 - image->GetHeight(); // 화면 높이의 1/2 지점에 맞게 조정
 }
 
 void Enemy::Attack(std::vector<Bullet*>& bullets)

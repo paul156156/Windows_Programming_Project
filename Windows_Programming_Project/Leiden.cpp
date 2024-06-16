@@ -19,13 +19,15 @@ LPCTSTR lpszWindowName = L"RAIDEN";
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 
-const int winWidth = 500;
+const int winWidth = 700;
 const int winHeight = 800;
 
 ULONG_PTR gdiplusToken;
-Fighter* playerFighter;
+Fighter* playerFighter = nullptr;
 std::vector<Bullet*> bullets; // 총알들을 저장할 벡터
 std::vector<Enemy*> enemies; // 적들을 저장할 벡터
+Image* lifeImage = nullptr; // 생명 수 이미지
+int score = 0; // 점수 변수
 
 Image* LoadPNG(LPCWSTR filePath)
 {
@@ -42,6 +44,8 @@ void PlayBGM(LPCWSTR bgmFilePath)
 
 void UpdatePlayerFighter()
 {
+    if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
+
     if (GetAsyncKeyState(VK_LEFT) & 0x8000)
     {
         playerFighter->Move(-10, 0);
@@ -58,19 +62,31 @@ void UpdatePlayerFighter()
     {
         playerFighter->Move(0, 10);
     }
-    playerFighter->SetBoundary(0, 0, winWidth, winHeight);
+    playerFighter->SetBoundary(0, 0, winWidth - 200, winHeight); // 게임 플레이 영역을 조정
 }
 
 void FireBullet()
 {
+    if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
+
     int x = playerFighter->GetX() + playerFighter->GetWidth() / 2 - 10;
     int y = playerFighter->GetY() - 10;
-    bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png"));
+
+    // 점수가 1000점 이상일 때 총알을 두 발 발사
+    if (score >= 1000)
+    {
+        bullets.push_back(new Bullet(x - 40, y, -1, L"resource\\image\\bullet.png")); // 왼쪽 총알
+        bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png")); // 오른쪽 총알
+    }
+    else
+    {
+        bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png"));
+    }
 }
 
 void CreateEnemy()
 {
-    int x = rand() % (winWidth - 50); // 적의 x 위치를 랜덤하게 설정
+    int x = rand() % (winWidth - 250); // 적의 x 위치를 랜덤하게 설정
     enemies.push_back(new Enemy(x, 0, L"resource\\image\\enemy.png"));
 }
 
@@ -81,6 +97,8 @@ bool CheckCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int 
 
 void CheckCollisions()
 {
+    if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
+
     for (auto bullet : bullets)
     {
         // 플레이어와 적의 총알 충돌
@@ -98,7 +116,6 @@ void CheckCollisions()
 
     for (auto enemy : enemies)
     {
-        // 플레이어의 총알과 적 충돌
         for (auto bullet : bullets)
         {
             if (bullet->GetDirection() == -1 && CheckCollision(enemy->GetX(), enemy->GetY(), enemy->GetWidth(), enemy->GetHeight(),
@@ -106,6 +123,10 @@ void CheckCollisions()
             {
                 enemy->TakeDamage();
                 bullet->Destroy();
+                if (enemy->IsDestroyed())
+                {
+                    score += 10; // 적을 죽였을 때 점수 증가
+                }
             }
         }
 
@@ -163,7 +184,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
     RegisterClassEx(&WndClass);
 
-    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 500, 0, winWidth+200, winHeight, NULL, (HMENU)NULL, hInstance, NULL);
+    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 500, 0, winWidth, winHeight, NULL, (HMENU)NULL, hInstance, NULL);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
@@ -172,11 +193,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
     // WinMain 함수 내 전투기 객체 생성 후 경계 설정 추가
     playerFighter = new Fighter(225, 700, L"resource\\image\\fighter.png");
+    if (!playerFighter) {
+        MessageBox(hWnd, L"Player fighter initialization failed!", L"Error", MB_OK);
+        PostQuitMessage(0);
+    }
     playerFighter->SetBoundary(0, 0, winWidth, winHeight); // 창 크기에 맞게 경계 설정
 
     // 적 객체 초기 생성
-    CreateEnemy();
-    CreateEnemy();
     CreateEnemy();
 
     SetTimer(hWnd, 1, 50, NULL);
@@ -224,11 +247,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         pBackgroundImage = LoadPNG(imagePath);
+        lifeImage = LoadPNG(L"resource\\image\\life.png"); // 생명 수 이미지 로드
+        if (!pBackgroundImage || !lifeImage) {
+            MessageBox(hWnd, L"Image load failed!", L"Error", MB_OK);
+            PostQuitMessage(0);
+        }
         break;
 
     case WM_TIMER:
         if (wParam == 1) // 게임 업데이트 타이머
         {
+            score += 1; // 점수 증가
             bgY += bgSpeed;
             if (bgY >= 3000) bgY = 0; // 3000은 이미지의 높이
 
@@ -304,6 +333,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             bullet->Draw(hMemDC);
         }
 
+        // 점수 표시
+        SetBkMode(hMemDC, TRANSPARENT);
+        SetTextColor(hMemDC, RGB(255, 255, 255));
+        HFONT hFont = CreateFont(24, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Arial");
+        HFONT hOldFont = (HFONT)SelectObject(hMemDC, hFont);
+        wchar_t scoreText[50];
+        swprintf_s(scoreText, L"Score: %d", score);
+        TextOut(hMemDC, 520, 20, scoreText, wcslen(scoreText)); // 점수를 오른쪽에 표시
+        SelectObject(hMemDC, hOldFont);
+        DeleteObject(hFont);
+
+        // 생명 수 표시
+        if (playerFighter)
+        {
+            for (int i = 0; i < playerFighter->GetLives(); ++i)
+            {
+                Graphics graphics(hMemDC);
+                graphics.DrawImage(lifeImage, 520 + i * 40, 60, lifeImage->GetWidth(), lifeImage->GetHeight());
+            }
+        }
+
         BitBlt(hDC, 0, 0, winWidth, winHeight, hMemDC, 0, 0, SRCCOPY); // 윈도우 크기에 맞게 수정
 
         SelectObject(hMemDC, hOldBitmap);
@@ -327,6 +377,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         delete pBackgroundImage;
         delete playerFighter;
+        delete lifeImage; // 생명 수 이미지 삭제
         PostQuitMessage(0);
         break;
 
