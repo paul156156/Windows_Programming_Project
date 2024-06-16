@@ -32,6 +32,10 @@ int score = 0; // 점수 변수
 int specialAttackUses = 0; // 사용 가능한 특수 공격 횟수
 int usedSpecialAttackCount = 0; // 사용된 특수 공격 횟수
 bool gameStarted = false;
+bool showMenu = false;
+bool musicPlaying = true; // 음악 재생 상태
+bool paused = false; // 게임 일시 정지 상태
+bool gameOver = false; // 게임 오버 상태
 
 Image* LoadPNG(LPCWSTR filePath)
 {
@@ -116,7 +120,7 @@ bool CheckCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int 
     return !(x1 > x2 + w2 || x1 + w1 < x2 || y1 > y2 + h2 || y1 + h1 < y2);
 }
 
-void CheckCollisions()
+void CheckCollisions(HWND hWnd)
 {
     if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
 
@@ -130,7 +134,16 @@ void CheckCollisions()
             bullet->Destroy();
             if (playerFighter->GetLives() <= 0)
             {
-                PostQuitMessage(0); // 플레이어가 죽음
+                // 게임 오버 처리
+                gameStarted = false;
+                showMenu = true;
+                gameOver = true;
+                KillTimer(hWnd, 1);
+                KillTimer(hWnd, 2);
+                ShowWindow(GetDlgItem(hWnd, 2), SW_SHOW);
+                ShowWindow(GetDlgItem(hWnd, 3), SW_SHOW);
+                ShowWindow(GetDlgItem(hWnd, 4), SW_SHOW);
+                return;
             }
         }
     }
@@ -155,7 +168,16 @@ void CheckCollisions()
         if (CheckCollision(playerFighter->GetX(), playerFighter->GetY(), playerFighter->GetWidth(), playerFighter->GetHeight(),
             enemy->GetX(), enemy->GetY(), enemy->GetWidth(), enemy->GetHeight()))
         {
-            PostQuitMessage(0); // 플레이어가 죽음
+            // 게임 오버 처리
+            gameStarted = false;
+            showMenu = true;
+            gameOver = true;
+            KillTimer(hWnd, 1);
+            KillTimer(hWnd, 2);
+            ShowWindow(GetDlgItem(hWnd, 2), SW_SHOW);
+            ShowWindow(GetDlgItem(hWnd, 3), SW_SHOW);
+            ShowWindow(GetDlgItem(hWnd, 4), SW_SHOW);
+            return;
         }
     }
 
@@ -269,13 +291,92 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         pBackgroundImage = LoadPNG(imagePath);
         lifeImage = LoadPNG(L"resource\\image\\life.png"); // 생명 수 이미지 로드
-        if (!pBackgroundImage || !lifeImage) {
-            MessageBox(hWnd, L"Image load failed!", L"Error", MB_OK);
-            PostQuitMessage(0);
-        }
+
+        // Resume 버튼 생성
+        CreateWindow(
+            L"BUTTON",  // 버튼 클래스 이름
+            L"Resume", // 버튼 텍스트
+            WS_TABSTOP | WS_CHILD | BS_DEFPUSHBUTTON,  // 스타일
+            winWidth / 2 - 50, // 버튼 위치 (가로 중앙)
+            winHeight / 2 - 70, // 버튼 위치 (세로 중앙 위)
+            100,  // 버튼 폭
+            40,   // 버튼 높이
+            hWnd, // 부모 윈도우 핸들
+            (HMENU)1, // 버튼 ID
+            g_hInst,  // 인스턴스 핸들
+            NULL      // 추가 매개변수
+        );
+
+        // Start 버튼 생성
+        CreateWindow(
+            L"BUTTON",  // 버튼 클래스 이름
+            L"Start",   // 버튼 텍스트
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // 스타일
+            winWidth / 2 - 50, // 버튼 위치 (가로 중앙)
+            winHeight / 2 - 20, // 버튼 위치 (세로 중앙)
+            100,  // 버튼 폭
+            40,   // 버튼 높이
+            hWnd, // 부모 윈도우 핸들
+            (HMENU)2, // 버튼 ID
+            g_hInst,  // 인스턴스 핸들
+            NULL      // 추가 매개변수
+        );
+
+        // Restart 버튼 생성
+        CreateWindow(
+            L"BUTTON",  // 버튼 클래스 이름
+            L"Restart", // 버튼 텍스트
+            WS_TABSTOP | WS_CHILD | BS_DEFPUSHBUTTON,  // 스타일
+            winWidth / 2 - 50, // 버튼 위치 (가로 중앙)
+            winHeight / 2 - 20, // 버튼 위치 (세로 중앙)
+            100,  // 버튼 폭
+            40,   // 버튼 높이
+            hWnd, // 부모 윈도우 핸들
+            (HMENU)3, // 버튼 ID
+            g_hInst,  // 인스턴스 핸들
+            NULL      // 추가 매개변수
+        );
+
+        // Toggle Music 버튼 생성
+        CreateWindow(
+            L"BUTTON",  // 버튼 클래스 이름
+            L"Toggle Music", // 버튼 텍스트
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // 스타일
+            winWidth / 2 - 50, // 버튼 위치 (가로 중앙)
+            winHeight / 2 + 30, // 버튼 위치 (세로 중앙 아래)
+            100,  // 버튼 폭
+            40,   // 버튼 높이
+            hWnd, // 부모 윈도우 핸들
+            (HMENU)4, // 버튼 ID
+            g_hInst,  // 인스턴스 핸들
+            NULL      // 추가 매개변수
+        );
+
+        // Quit 버튼 생성
+        CreateWindow(
+            L"BUTTON",  // 버튼 클래스 이름
+            L"Quit", // 버튼 텍스트
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // 스타일
+            winWidth / 2 - 50, // 버튼 위치 (가로 중앙)
+            winHeight / 2 + 80, // 버튼 위치 (세로 중앙 아래)
+            100,  // 버튼 폭
+            40,   // 버튼 높이
+            hWnd, // 부모 윈도우 핸들
+            (HMENU)5, // 버튼 ID
+            g_hInst,  // 인스턴스 핸들
+            NULL      // 추가 매개변수
+        );
+
+        // 초기 상태에서 Resume와 Restart 버튼 숨기기
+        ShowWindow(GetDlgItem(hWnd, 1), SW_HIDE); // Resume
+        ShowWindow(GetDlgItem(hWnd, 3), SW_HIDE); // Restart
+
         break;
 
     case WM_TIMER:
+        if (paused) return 0; // 일시 정지 상태에서는 타이머 메시지를 처리하지 않음
+        if (!gameStarted) break;
+
         if (wParam == 1) // 게임 업데이트 타이머
         {
             score += 1; // 점수 증가
@@ -290,7 +391,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
                 enemy->Attack(bullets);
             }
 
-            CheckCollisions();
+            CheckCollisions(hWnd);
 
             // 총알 업데이트
             for (auto bullet : bullets)
@@ -320,6 +421,92 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         {
             CreateEnemy();
         }
+        break;
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case 1: // Resume 버튼 ID
+            paused = false;
+            // 게임 다시 시작
+            SetTimer(hWnd, 1, 50, NULL);
+            SetTimer(hWnd, 2, 1000, NULL);
+            // 메뉴 버튼 숨기기
+            ShowWindow(GetDlgItem(hWnd, 1), SW_HIDE); // Resume
+            ShowWindow(GetDlgItem(hWnd, 3), SW_HIDE); // Restart
+            ShowWindow(GetDlgItem(hWnd, 4), SW_HIDE); // Toggle Music
+            ShowWindow(GetDlgItem(hWnd, 5), SW_HIDE); // Quit
+
+            break;
+        case 2: // Start 버튼 ID
+            gameStarted = true;
+            showMenu = false;
+            // Start 버튼 숨기기
+            ShowWindow(GetDlgItem(hWnd, 2), SW_HIDE);
+            // Toggle Music 버튼 숨기기
+            ShowWindow(GetDlgItem(hWnd, 4), SW_HIDE);
+            // Quit 버튼 숨기기
+            ShowWindow(GetDlgItem(hWnd, 5), SW_HIDE);
+            // 타이머 시작
+            SetTimer(hWnd, 1, 50, NULL);
+            SetTimer(hWnd, 2, 1000, NULL); // 1초마다 새로운 적 생성
+            break;
+        case 3: // Restart 버튼 ID
+            // 게임 상태 초기화
+            gameStarted = false;
+            showMenu = false;
+            score = 0;
+            specialAttackUses = 0;
+            usedSpecialAttackCount = 0;
+            paused = false; // 일시 정지 해제
+            gameOver = false;
+
+            // 적과 총알 초기화
+            for (auto bullet : bullets)
+            {
+                delete bullet;
+            }
+            bullets.clear();
+            for (auto enemy : enemies)
+            {
+                delete enemy;
+            }
+            enemies.clear();
+
+            // 플레이어 초기화
+            delete playerFighter;
+            playerFighter = new Fighter(225, 700, L"resource\\image\\fighter.png");
+            playerFighter->SetBoundary(0, 0, winWidth, winHeight); // 창 크기에 맞게 경계 설정
+
+            // Start 버튼 숨기기
+            ShowWindow(GetDlgItem(hWnd, 2), SW_HIDE);
+            ShowWindow(GetDlgItem(hWnd, 3), SW_HIDE); // Restart
+            ShowWindow(GetDlgItem(hWnd, 4), SW_HIDE); // Toggle Music
+            ShowWindow(GetDlgItem(hWnd, 5), SW_HIDE); // Quit
+            ShowWindow(GetDlgItem(hWnd, 1), SW_HIDE);
+
+            // 타이머 시작
+            SetTimer(hWnd, 1, 50, NULL);
+            SetTimer(hWnd, 2, 1000, NULL); // 1초마다 새로운 적 생성
+
+            gameStarted = true;
+            break;
+        case 4: // Toggle Music 버튼 ID
+            if (musicPlaying)
+            {
+                mciSendString(L"stop bgm", NULL, 0, NULL);
+            }
+            else
+            {
+                PlayBGM(L"resource\\sound\\terran.mp3");
+            }
+            musicPlaying = !musicPlaying;
+            break;
+        case 5: // Quit 버튼 ID
+            PostQuitMessage(0);
+            break;
+        }
+        InvalidateRect(hWnd, NULL, FALSE); // 변경된 상태를 다시 그리도록 요청
         break;
 
     case WM_PAINT:
@@ -403,10 +590,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
         case VK_SPACE:
-            FireBullet();
+            if (gameStarted && !paused) // 게임이 시작되고 일시 정지되지 않은 경우에만 총알 발사
+            {
+                FireBullet();
+            }
+            break;
+        case VK_ESCAPE:
+            if (gameStarted) // 게임이 시작된 상태에서만 ESC 처리
+            {
+                paused = !paused; // 일시 정지 상태를 토글
+                if (paused)
+                {
+                    // 게임 일시 정지
+                    KillTimer(hWnd, 1);
+                    KillTimer(hWnd, 2);
+                    // 메뉴 버튼 보이기
+                    ShowWindow(GetDlgItem(hWnd, 1), SW_SHOW); // Resume
+                    ShowWindow(GetDlgItem(hWnd, 3), SW_SHOW); // Restart
+                    ShowWindow(GetDlgItem(hWnd, 4), SW_SHOW); // Toggle Music
+                    ShowWindow(GetDlgItem(hWnd, 5), SW_SHOW); // Quit
+                }
+                else
+                {
+                    // 게임 다시 시작
+                    SetTimer(hWnd, 1, 50, NULL);
+                    SetTimer(hWnd, 2, 1000, NULL);
+                    // 메뉴 버튼 숨기기
+                    ShowWindow(GetDlgItem(hWnd, 1), SW_HIDE);
+                    ShowWindow(GetDlgItem(hWnd, 3), SW_HIDE);
+                    ShowWindow(GetDlgItem(hWnd, 4), SW_HIDE);
+                    ShowWindow(GetDlgItem(hWnd, 5), SW_HIDE);
+                }
+            }
+            InvalidateRect(hWnd, NULL, FALSE); // 변경된 상태를 다시 그리도록 요청
             break;
         }
-        InvalidateRect(hWnd, NULL, FALSE);
         break;
 
     case WM_DESTROY:
