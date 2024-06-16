@@ -140,7 +140,6 @@ void CheckCollisions(HWND hWnd)
                 gameOver = true;
                 KillTimer(hWnd, 1);
                 KillTimer(hWnd, 2);
-                ShowWindow(GetDlgItem(hWnd, 2), SW_SHOW);
                 ShowWindow(GetDlgItem(hWnd, 3), SW_SHOW);
                 ShowWindow(GetDlgItem(hWnd, 4), SW_SHOW);
                 return;
