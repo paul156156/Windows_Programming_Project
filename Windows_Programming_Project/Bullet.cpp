@@ -19,10 +19,10 @@ void Bullet::Draw(HDC hdc)
 
 void Bullet::Update()
 {
-    y += direction * 10; // 방향에 따라 이동
+    y += direction * 10;
 }
 
 bool Bullet::IsOffScreen() const
 {
-    return y + image->GetHeight() < 0 || y > 800; // 화면 밖으로 나가면 true 반환
+    return y + image->GetHeight() < 0 || y > 800;
 }

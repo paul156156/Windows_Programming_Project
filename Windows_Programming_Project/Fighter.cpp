@@ -22,7 +22,6 @@ void Fighter::Move(int dx, int dy)
     x += dx;
     y += dy;
 
-    // 전투기의 이동을 화면 내로 제한
     if (x < leftBoundary) x = leftBoundary;
     if (y < topBoundary) y = topBoundary;
     if (x + image->GetWidth() > rightBoundary) x = rightBoundary - image->GetWidth();

@@ -8,10 +8,9 @@ AdvancedEnemy::AdvancedEnemy(int x, int y, LPCWSTR imagePath)
 
 void AdvancedEnemy::Move()
 {
-    // 고급 적의 이동 패턴을 정의합니다.
     moveTimer += 50;
 
-    if (moveTimer >= 2000) // 2초마다 방향 전환
+    if (moveTimer >= 1000)
     {
         movingDown = !movingDown;
         moveTimer = 0;
@@ -19,33 +18,29 @@ void AdvancedEnemy::Move()
 
     if (movingDown)
     {
-        x -= 5; // 오른쪽으로 이동
-        y += 5; // 아래로 이동
+        x -= 5;
+        y += 5;
     }
     else
     {
-        x += 5; // 왼쪽으로 이동
-        y -= 5; // 위로 이동
+        x += 5;
+        y -= 5;
     }
 
-    // 좌우로 지그재그 이동
-    //x += 30 * sin(moveTimer * 3.14 / 180); // 주기를 조정하여 좌우 움직임 변경
-
-    // 적의 이동을 화면 내로 제한 (적의 크기에 맞게 조정)
     if (x < 0) x = 0;
-    if (x + image->GetWidth() > 500) x = 500 - image->GetWidth(); // 화면 너비에 맞게 조정
+    if (x + image->GetWidth() > 500) x = 500 - image->GetWidth();
     if (y < 0) y = 0;
-    if (y + image->GetHeight() > 400) y = 400 - image->GetHeight(); // 화면 높이의 1/2 지점에 맞게 조정
+    if (y + image->GetHeight() > 400) y = 400 - image->GetHeight();
 }
 
 void AdvancedEnemy::Attack(std::vector<Bullet*>& bullets)
 {
     attackTimer += 50;
-    if (attackTimer >= 1000) // 1초마다 총알 발사
+    if (attackTimer >= 1000)
     {
         int bulletX = x + image->GetWidth() / 2 - 10;
         int bulletY = y + image->GetHeight();
-        bullets.push_back(new Bullet(bulletX, bulletY, 1, L"resource\\image\\advanced_enemy_bullet.png")); // 고급 적의 총알 이미지
+        bullets.push_back(new Bullet(bulletX, bulletY, 1, L"resource\\image\\advanced_enemy_bullet.png"));
         attackTimer = 0;
     }
 }

@@ -25,17 +25,17 @@ const int winHeight = 800;
 
 ULONG_PTR gdiplusToken;
 Fighter* playerFighter = nullptr;
-std::vector<Bullet*> bullets; // 총알들을 저장할 벡터
-std::vector<Enemy*> enemies; // 적들을 저장할 벡터
-Image* lifeImage = nullptr; // 생명 수 이미지
-int score = 0; // 점수 변수
-int specialAttackUses = 0; // 사용 가능한 특수 공격 횟수
-int usedSpecialAttackCount = 0; // 사용된 특수 공격 횟수
+std::vector<Bullet*> bullets;
+std::vector<Enemy*> enemies;
+Image* lifeImage = nullptr;
+int score = 0;
+int specialAttackUses = 0;
+int usedSpecialAttackCount = 0;
 bool gameStarted = false;
 bool showMenu = false;
-bool musicPlaying = true; // 음악 재생 상태
-bool paused = false; // 게임 일시 정지 상태
-bool gameOver = false; // 게임 오버 상태
+bool musicPlaying = true;
+bool paused = false;
+bool gameOver = false;
 
 Image* LoadPNG(LPCWSTR filePath)
 {
@@ -52,7 +52,7 @@ void PlayBGM(LPCWSTR bgmFilePath)
 
 void UpdatePlayerFighter()
 {
-    if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
+    if (playerFighter == nullptr) return;
 
     if (GetAsyncKeyState(VK_LEFT) & 0x8000)
     {
@@ -70,21 +70,19 @@ void UpdatePlayerFighter()
     {
         playerFighter->Move(0, 10);
     }
-    playerFighter->SetBoundary(0, 0, winWidth - 200, winHeight); // 게임 플레이 영역을 조정
+    playerFighter->SetBoundary(0, 0, winWidth - 200, winHeight);
 }
 
 void FireBullet()
 {
-    if (playerFighter == nullptr) return; // 객체가 nullptr인지 확인
+    if (playerFighter == nullptr) return;
 
     int x = playerFighter->GetX() + playerFighter->GetWidth() / 2 - 10;
     int y = playerFighter->GetY() - 10;
 
-    // Shift 키가 눌렸고 사용 가능한 특수 공격 횟수가 있는지 확인
     if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && specialAttackUses > 0)
     {
-        // 폭을 꽉 채운 3줄의 총알 발사
-        for (int i = 0; i < winWidth - 200; i += 50) // 각 줄의 간격을 50으로 설정
+        for (int i = 0; i < winWidth - 200; i += 50) 
         {
             bullets.push_back(new Bullet(i, y + 20, -1, L"resource\\image\\special_bullet.png"));
             bullets.push_back(new Bullet(i, y - 20, -1, L"resource\\image\\special_bullet.png"));
@@ -96,8 +94,8 @@ void FireBullet()
     // 점수가 1000점 이상일 때 총알을 두 발 발사
     if (score >= 1000)
     {
-        bullets.push_back(new Bullet(x - 40, y, -1, L"resource\\image\\bullet.png")); // 왼쪽 총알
-        bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png")); // 오른쪽 총알
+        bullets.push_back(new Bullet(x - 40, y, -1, L"resource\\image\\bullet.png"));
+        bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png"));
     }
     else
     {
@@ -107,7 +105,7 @@ void FireBullet()
 
 void CreateEnemy()
 {
-    int x = rand() % (winWidth - 250); // 적의 x 위치를 랜덤하게 설정
+    int x = rand() % (winWidth - 250);
     if (score >= 1000)
     {
         enemies.push_back(new AdvancedEnemy(x, 0, L"resource\\image\\advanced_enemy.png"));
@@ -158,7 +156,7 @@ void CheckCollisions(HWND hWnd)
                 bullet->Destroy();
                 if (enemy->IsDestroyed())
                 {
-                    score += 10; // 적을 죽였을 때 점수 증가
+                    score += 10;
                 }
             }
         }
@@ -245,7 +243,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     CreateEnemy();
 
     SetTimer(hWnd, 1, 50, NULL);
-    SetTimer(hWnd, 2, 1000, NULL); // 1초마다 새로운 적 생성
+    SetTimer(hWnd, 2, 1000, NULL);
 
     while (GetMessage(&Message, NULL, 0, 0))
     {
@@ -373,14 +371,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_TIMER:
-        if (paused) return 0; // 일시 정지 상태에서는 타이머 메시지를 처리하지 않음
+        if (paused) return 0;
         if (!gameStarted) break;
 
-        if (wParam == 1) // 게임 업데이트 타이머
+        if (wParam == 1)
         {
-            score += 1; // 점수 증가
+            score += 1;
+
             bgY += bgSpeed;
-            if (bgY >= 3000) bgY = 0; // 3000은 이미지의 높이
+            if (bgY >= 3000) bgY = 0;
 
             UpdatePlayerFighter();
 
@@ -457,15 +456,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             score = 0;
             specialAttackUses = 0;
             usedSpecialAttackCount = 0;
-            paused = false; // 일시 정지 해제
+            paused = false;
             gameOver = false;
 
-            // 적과 총알 초기화
+            // 총알 초기화
             for (auto bullet : bullets)
             {
                 delete bullet;
             }
             bullets.clear();
+            // 적 초기화
             for (auto enemy : enemies)
             {
                 delete enemy;
@@ -505,7 +505,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             PostQuitMessage(0);
             break;
         }
-        InvalidateRect(hWnd, NULL, FALSE); // 변경된 상태를 다시 그리도록 요청
+        InvalidateRect(hWnd, NULL, FALSE);
         break;
 
     case WM_PAINT:
@@ -513,7 +513,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         PAINTSTRUCT ps;
         HDC hDC = BeginPaint(hWnd, &ps);
         HDC hMemDC = CreateCompatibleDC(hDC);
-        HBITMAP hMemBitmap = CreateCompatibleBitmap(hDC, winWidth, winHeight); // 윈도우 크기에 맞게 수정
+        HBITMAP hMemBitmap = CreateCompatibleBitmap(hDC, winWidth, winHeight);
         HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemDC, hMemBitmap);
 
         if (pBackgroundImage)
@@ -522,9 +522,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             int imgWidth = pBackgroundImage->GetWidth();
             int imgHeight = pBackgroundImage->GetHeight();
 
-            // 이미지의 상단 부분
             graphics.DrawImage(pBackgroundImage, 0, bgY - imgHeight, imgWidth, imgHeight);
-            // 이미지의 하단 부분
             graphics.DrawImage(pBackgroundImage, 0, bgY, imgWidth, imgHeight);
         }
 
@@ -553,14 +551,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         HFONT hOldFont = (HFONT)SelectObject(hMemDC, hFont);
         wchar_t scoreText[50];
         swprintf_s(scoreText, L"Score: %d", score);
-        TextOut(hMemDC, 520, 20, scoreText, wcslen(scoreText)); // 점수를 오른쪽에 표시
+        TextOut(hMemDC, 520, 20, scoreText, wcslen(scoreText));
         SelectObject(hMemDC, hOldFont);
         DeleteObject(hFont);
 
         // 특수 공격 사용 횟수 표시
         wchar_t specialAttackText[50];
         swprintf_s(specialAttackText, L"Special Bullet: %d", specialAttackUses);
-        TextOut(hMemDC, 520, 80, specialAttackText, wcslen(specialAttackText)); // 특수 공격 사용 횟수를 오른쪽에 표시
+        TextOut(hMemDC, 520, 80, specialAttackText, wcslen(specialAttackText));
 
         SelectObject(hMemDC, hOldFont);
         DeleteObject(hFont);
@@ -575,7 +573,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             }
         }
 
-        BitBlt(hDC, 0, 0, winWidth, winHeight, hMemDC, 0, 0, SRCCOPY); // 윈도우 크기에 맞게 수정
+        BitBlt(hDC, 0, 0, winWidth, winHeight, hMemDC, 0, 0, SRCCOPY);
 
         SelectObject(hMemDC, hOldBitmap);
         DeleteObject(hMemBitmap);
@@ -595,15 +593,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
             }
             break;
         case VK_ESCAPE:
-            if (gameStarted) // 게임이 시작된 상태에서만 ESC 처리
+            if (gameStarted)
             {
-                paused = !paused; // 일시 정지 상태를 토글
+                paused = !paused; // 일시 정지
                 if (paused)
                 {
-                    // 게임 일시 정지
                     KillTimer(hWnd, 1);
                     KillTimer(hWnd, 2);
-                    // 메뉴 버튼 보이기
+
+                    // 메뉴 보이기
                     ShowWindow(GetDlgItem(hWnd, 1), SW_SHOW); // Resume
                     ShowWindow(GetDlgItem(hWnd, 3), SW_SHOW); // Restart
                     ShowWindow(GetDlgItem(hWnd, 4), SW_SHOW); // Toggle Music
@@ -614,14 +612,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
                     // 게임 다시 시작
                     SetTimer(hWnd, 1, 50, NULL);
                     SetTimer(hWnd, 2, 1000, NULL);
-                    // 메뉴 버튼 숨기기
+
+                    // 메뉴 숨기기
                     ShowWindow(GetDlgItem(hWnd, 1), SW_HIDE);
                     ShowWindow(GetDlgItem(hWnd, 3), SW_HIDE);
                     ShowWindow(GetDlgItem(hWnd, 4), SW_HIDE);
                     ShowWindow(GetDlgItem(hWnd, 5), SW_HIDE);
                 }
             }
-            InvalidateRect(hWnd, NULL, FALSE); // 변경된 상태를 다시 그리도록 요청
+            InvalidateRect(hWnd, NULL, FALSE);
             break;
         }
         break;
