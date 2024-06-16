@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include "Fighter.h"
+#include "Enemy.h"
 #include "Bullet.h"
 
 #pragma comment(lib, "gdiplus.lib")
@@ -24,6 +25,7 @@ const int winHeight = 800;
 ULONG_PTR gdiplusToken;
 Fighter* playerFighter;
 std::vector<Bullet*> bullets; // 총알들을 저장할 벡터
+std::vector<Enemy*> enemies; // 적들을 저장할 벡터
 
 Image* LoadPNG(LPCWSTR filePath)
 {
@@ -63,7 +65,77 @@ void FireBullet()
 {
     int x = playerFighter->GetX() + playerFighter->GetWidth() / 2 - 10;
     int y = playerFighter->GetY() - 10;
-    bullets.push_back(new Bullet(x, y, L"resource\\image\\bullet.png"));
+    bullets.push_back(new Bullet(x, y, -1, L"resource\\image\\bullet.png"));
+}
+
+void CreateEnemy()
+{
+    int x = rand() % (winWidth - 50); // 적의 x 위치를 랜덤하게 설정
+    enemies.push_back(new Enemy(x, 0, L"resource\\image\\enemy.png"));
+}
+
+bool CheckCollision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
+{
+    return !(x1 > x2 + w2 || x1 + w1 < x2 || y1 > y2 + h2 || y1 + h1 < y2);
+}
+
+void CheckCollisions()
+{
+    for (auto bullet : bullets)
+    {
+        // 플레이어와 적의 총알 충돌
+        if (bullet->GetDirection() == 1 && CheckCollision(playerFighter->GetX(), playerFighter->GetY(), playerFighter->GetWidth(), playerFighter->GetHeight(),
+            bullet->GetX(), bullet->GetY(), bullet->GetWidth(), bullet->GetHeight()))
+        {
+            playerFighter->TakeDamage();
+            bullet->Destroy();
+            if (playerFighter->GetLives() <= 0)
+            {
+                PostQuitMessage(0); // 플레이어가 죽음
+            }
+        }
+    }
+
+    for (auto enemy : enemies)
+    {
+        // 플레이어의 총알과 적 충돌
+        for (auto bullet : bullets)
+        {
+            if (bullet->GetDirection() == -1 && CheckCollision(enemy->GetX(), enemy->GetY(), enemy->GetWidth(), enemy->GetHeight(),
+                bullet->GetX(), bullet->GetY(), bullet->GetWidth(), bullet->GetHeight()))
+            {
+                enemy->TakeDamage();
+                bullet->Destroy();
+            }
+        }
+
+        // 적과 플레이어 충돌
+        if (CheckCollision(playerFighter->GetX(), playerFighter->GetY(), playerFighter->GetWidth(), playerFighter->GetHeight(),
+            enemy->GetX(), enemy->GetY(), enemy->GetWidth(), enemy->GetHeight()))
+        {
+            PostQuitMessage(0); // 플레이어가 죽음
+        }
+    }
+
+    // 화면을 벗어난 총알 삭제
+    bullets.erase(std::remove_if(bullets.begin(), bullets.end(), [](Bullet* bullet) {
+        if (bullet->IsOffScreen() || bullet->IsDestroyed())
+        {
+            delete bullet;
+            return true;
+        }
+        return false;
+        }), bullets.end());
+
+    // 파괴된 적 삭제
+    enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](Enemy* enemy) {
+        if (enemy->IsDestroyed())
+        {
+            delete enemy;
+            return true;
+        }
+        return false;
+        }), enemies.end());
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
@@ -91,7 +163,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
     RegisterClassEx(&WndClass);
 
-    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 500, 0, winWidth, winHeight, NULL, (HMENU)NULL, hInstance, NULL);
+    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 500, 0, winWidth+200, winHeight, NULL, (HMENU)NULL, hInstance, NULL);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
@@ -102,7 +174,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     playerFighter = new Fighter(225, 700, L"resource\\image\\fighter.png");
     playerFighter->SetBoundary(0, 0, winWidth, winHeight); // 창 크기에 맞게 경계 설정
 
+    // 적 객체 초기 생성
+    CreateEnemy();
+    CreateEnemy();
+    CreateEnemy();
+
     SetTimer(hWnd, 1, 50, NULL);
+    SetTimer(hWnd, 2, 1000, NULL); // 1초마다 새로운 적 생성
 
     while (GetMessage(&Message, NULL, 0, 0))
     {
@@ -111,6 +189,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     }
 
     KillTimer(hWnd, 1);
+    KillTimer(hWnd, 2);
     GdiplusShutdown(gdiplusToken);
 
     delete playerFighter;
@@ -119,6 +198,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     for (auto bullet : bullets)
     {
         delete bullet;
+    }
+
+    // 적 객체들 삭제
+    for (auto enemy : enemies)
+    {
+        delete enemy;
     }
 
     // 배경 음악 중지 및 닫기
@@ -142,28 +227,43 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_TIMER:
-        bgY += bgSpeed;
-        if (bgY >= 3000) bgY = 0; // 3000은 이미지의 높이
-
-        UpdatePlayerFighter();
-
-        // 총알 업데이트
-        for (auto bullet : bullets)
+        if (wParam == 1) // 게임 업데이트 타이머
         {
-            bullet->Update();
-        }
+            bgY += bgSpeed;
+            if (bgY >= 3000) bgY = 0; // 3000은 이미지의 높이
 
-        // 화면을 벗어난 총알 삭제
-        bullets.erase(std::remove_if(bullets.begin(), bullets.end(), [](Bullet* bullet) {
-            if (bullet->IsOffScreen())
+            UpdatePlayerFighter();
+
+            for (auto enemy : enemies)
             {
-                delete bullet;
-                return true;
+                enemy->Move();
+                enemy->Attack(bullets);
             }
-            return false;
-            }), bullets.end());
 
-        InvalidateRect(hWnd, NULL, FALSE);
+            CheckCollisions();
+
+            // 총알 업데이트
+            for (auto bullet : bullets)
+            {
+                bullet->Update();
+            }
+
+            // 화면을 벗어난 총알 삭제
+            bullets.erase(std::remove_if(bullets.begin(), bullets.end(), [](Bullet* bullet) {
+                if (bullet->IsOffScreen())
+                {
+                    delete bullet;
+                    return true;
+                }
+                return false;
+                }), bullets.end());
+
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
+        else if (wParam == 2) // 적 생성 타이머
+        {
+            CreateEnemy();
+        }
         break;
 
     case WM_PAINT:
@@ -190,6 +290,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
         if (playerFighter)
         {
             playerFighter->Draw(hMemDC);
+        }
+
+        // 적 그리기
+        for (auto enemy : enemies)
+        {
+            enemy->Draw(hMemDC);
         }
 
         // 총알 그리기

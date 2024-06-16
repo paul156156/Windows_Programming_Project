@@ -12,6 +12,8 @@ public:
     void Draw(HDC hdc);
     void Move(int dx, int dy);
     void SetBoundary(int left, int top, int right, int bottom);
+    void TakeDamage() { lives--; }
+    int GetLives() const { return lives; }
 
     int GetX() const { return x; }
     int GetY() const { return y; }
@@ -20,6 +22,7 @@ public:
 
 private:
     int x, y;
+    int lives;
     int leftBoundary, topBoundary, rightBoundary, bottomBoundary;
     Image* image;
 };

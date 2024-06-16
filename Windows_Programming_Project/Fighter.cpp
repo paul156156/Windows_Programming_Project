@@ -1,7 +1,7 @@
 #include "Fighter.h"
 
 Fighter::Fighter(int x, int y, LPCWSTR imagePath)
-    : x(x), y(y), leftBoundary(0), topBoundary(0), rightBoundary(0), bottomBoundary(0)
+    : x(x), y(y), lives(3), leftBoundary(0), topBoundary(0), rightBoundary(0), bottomBoundary(0)
 {
     image = new Image(imagePath);
 }

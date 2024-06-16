@@ -1,7 +1,7 @@
 #include "Bullet.h"
 
-Bullet::Bullet(int x, int y, LPCWSTR imagePath)
-    : x(x), y(y)
+Bullet::Bullet(int x, int y, int direction, LPCWSTR imagePath)
+    : x(x), y(y), direction(direction), destroyed(false)
 {
     image = new Image(imagePath);
 }
@@ -19,10 +19,10 @@ void Bullet::Draw(HDC hdc)
 
 void Bullet::Update()
 {
-    y -= 10; // 총알이 위로 이동
+    y += direction * 10; // 방향에 따라 이동
 }
 
 bool Bullet::IsOffScreen() const
 {
-    return y + image->GetHeight() < 0; // 총알이 화면 위로 나가면 true 반환
+    return y + image->GetHeight() < 0 || y > 800; // 화면 밖으로 나가면 true 반환
 }
